@@ -1898,17 +1898,15 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 	}
 
 	var path string
-	if req.Method != "CONNECT" {
-		path = req.URL.RequestURI()
+	path = req.URL.RequestURI()
+	if !validPseudoPath(path) {
+		orig := path
+		path = strings.TrimPrefix(path, req.URL.Scheme+"://"+host)
 		if !validPseudoPath(path) {
-			orig := path
-			path = strings.TrimPrefix(path, req.URL.Scheme+"://"+host)
-			if !validPseudoPath(path) {
-				if req.URL.Opaque != "" {
-					return nil, fmt.Errorf("invalid request :path %q from URL.Opaque = %q", orig, req.URL.Opaque)
-				} else {
-					return nil, fmt.Errorf("invalid request :path %q", orig)
-				}
+			if req.URL.Opaque != "" {
+				return nil, fmt.Errorf("invalid request :path %q from URL.Opaque = %q", orig, req.URL.Opaque)
+			} else {
+				return nil, fmt.Errorf("invalid request :path %q", orig)
 			}
 		}
 	}
@@ -1940,10 +1938,9 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 			m = http.MethodGet
 		}
 		f(":method", m)
-		if req.Method != "CONNECT" {
-			f(":path", path)
-			f(":scheme", req.URL.Scheme)
-		}
+		f(":path", path)
+		f(":scheme", req.URL.Scheme)
+
 		if trailers != "" {
 			f("trailer", trailers)
 		}
